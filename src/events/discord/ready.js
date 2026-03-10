@@ -3,6 +3,7 @@ import { logger } from "#utils/logger";
 import { config } from "#config/config";
 import { db } from "#database/DatabaseManager";
 import { antiAbuse } from "#utils/AntiAbuse";
+import { PlayerManager } from "#managers/PlayerManager";
 import fs from "fs";
 import path from "path";
 import { AttachmentBuilder } from "discord.js";
@@ -280,9 +281,10 @@ async function connect247Guild(client, guildData) {
         "247Mode",
         `Player already exists for guild ${guild.name}, updating 24/7 flags`,
       );
-      existingPlayer.set("247Mode", true);
-      existingPlayer.set("247VoiceChannel", voiceChannel.id);
-      existingPlayer.set("247TextChannel", textChannel.id);
+      const existingPm = new PlayerManager(existingPlayer);
+      existingPm.setData("247Mode", true);
+      existingPm.setData("247VoiceChannel", voiceChannel.id);
+      existingPm.setData("247TextChannel", textChannel.id);
       return;
     }
 
@@ -300,7 +302,7 @@ async function connect247Guild(client, guildData) {
       `Connecting to 24/7 channel ${voiceChannel.name} in guild ${guild.name}`,
     );
 
-    const player = client.music.createPlayer({
+    const rawPlayer = await client.music.createPlayer({
       guildId: guild.id,
       textChannelId: textChannel.id,
       voiceChannelId: voiceChannel.id,
@@ -308,12 +310,12 @@ async function connect247Guild(client, guildData) {
       selfDeaf: true,
       volume: db.guild.getDefaultVolume(guild.id),
     });
-    
-    
-    player.set("247Mode", true);
-    player.set("247VoiceChannel", voiceChannel.id);
-    player.set("247TextChannel", textChannel.id);
-    player.set("247LastConnected", Date.now());
+
+    const player = new PlayerManager(rawPlayer);
+    player.setData("247Mode", true);
+    player.setData("247VoiceChannel", voiceChannel.id);
+    player.setData("247TextChannel", textChannel.id);
+    player.setData("247LastConnected", Date.now());
 
     logger.success(
       "247Mode",
@@ -395,7 +397,7 @@ async function checkSingle247Connection(client, guildData) {
         textChannel = voiceChannel;
       }
 
-      const newPlayer = client.music.createPlayer({
+      const rawNewPlayer = await client.music.createPlayer({
         guildId: guild.id,
         textChannelId: textChannel.id,
         voiceChannelId: voiceChannel.id,
@@ -403,13 +405,14 @@ async function checkSingle247Connection(client, guildData) {
         selfDeaf: true,
         volume: db.guild.getDefaultVolume(guild.id),
       });
-      if (!newPlayer.connected) {
-        await newPlayer.connect();
+      if (!rawNewPlayer.connected) {
+        await rawNewPlayer.connect();
       }
-      newPlayer.set("247Mode", true);
-      newPlayer.set("247VoiceChannel", voiceChannel.id);
-      newPlayer.set("247TextChannel", textChannel.id);
-      newPlayer.set("247LastReconnected", Date.now());
+      const newPlayer = new PlayerManager(rawNewPlayer);
+      newPlayer.setData("247Mode", true);
+      newPlayer.setData("247VoiceChannel", voiceChannel.id);
+      newPlayer.setData("247TextChannel", textChannel.id);
+      newPlayer.setData("247LastReconnected", Date.now());
 
       logger.success(
         "247Mode",
@@ -423,10 +426,11 @@ async function checkSingle247Connection(client, guildData) {
       );
     }
   } else {
-    player.set("247Mode", true);
-    player.set("247VoiceChannel", voiceChannel.id);
+    const pm = new PlayerManager(player);
+    pm.setData("247Mode", true);
+    pm.setData("247VoiceChannel", voiceChannel.id);
     if (guildData.stay_247_text_channel) {
-      player.set("247TextChannel", guildData.stay_247_text_channel);
+      pm.setData("247TextChannel", guildData.stay_247_text_channel);
     }
   }
 }
