@@ -22,9 +22,8 @@ export class AntiAbuse extends Database {
 	}
 
 	initTable() {
-		this.exec('DROP TABLE IF EXISTS cooldowns');
-		this.exec('DROP TABLE IF EXISTS mention_limits');
-
+		// FIX: Removed DROP TABLE - tables are now persistent across restarts.
+		// Violation data survives bot restarts, closing the abuse-reset loophole.
 		this.exec(`
       CREATE TABLE IF NOT EXISTS cooldowns (
         user_id TEXT NOT NULL,
@@ -183,15 +182,17 @@ export class AntiAbuse extends Database {
 				config.assets?.defaultThumbnail ||
 				config.assets?.defaultTrackArtwork;
 
-			const section = new SectionBuilder()
-				.addTextDisplayComponents(
-					new TextDisplayBuilder().setContent(content),
-				)
-				.setThumbnailAccessory(
+			const sectionBuilder = new SectionBuilder().addTextDisplayComponents(
+				new TextDisplayBuilder().setContent(content),
+			);
+
+			if (thumbnailUrl) {
+				sectionBuilder.setThumbnailAccessory(
 					new ThumbnailBuilder().setURL(thumbnailUrl),
 				);
+			}
 
-			container.addSectionComponents(section);
+			container.addSectionComponents(sectionBuilder);
 
 			container.addSeparatorComponents(
 				new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
@@ -203,9 +204,9 @@ export class AntiAbuse extends Database {
 			};
 
 			if (messageOrInteraction.reply) {
-				messageOrInteraction.reply(payload);
+				messageOrInteraction.reply(payload).catch(() => {});
 			} else if (messageOrInteraction.editReply) {
-				messageOrInteraction.editReply(payload);
+				messageOrInteraction.editReply(payload).catch(() => {});
 			}
 		} catch (e) {
 			logger.error(
@@ -242,15 +243,17 @@ export class AntiAbuse extends Database {
 				config.assets?.defaultThumbnail ||
 				config.assets?.defaultTrackArtwork;
 
-			const section = new SectionBuilder()
-				.addTextDisplayComponents(
-					new TextDisplayBuilder().setContent(content),
-				)
-				.setThumbnailAccessory(
+			const sectionBuilder = new SectionBuilder().addTextDisplayComponents(
+				new TextDisplayBuilder().setContent(content),
+			);
+
+			if (thumbnailUrl) {
+				sectionBuilder.setThumbnailAccessory(
 					new ThumbnailBuilder().setURL(thumbnailUrl),
 				);
+			}
 
-			container.addSectionComponents(section);
+			container.addSectionComponents(sectionBuilder);
 
 			container.addSeparatorComponents(
 				new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
@@ -263,9 +266,10 @@ export class AntiAbuse extends Database {
 			};
 
 			if (messageOrInteraction.reply) {
-				messageOrInteraction.reply(payload);
+				messageOrInteraction.reply(payload).catch(() => {});
 			} else if (messageOrInteraction.followUp) {
-				messageOrInteraction.reply(payload);
+				// FIX: was calling .reply() in the followUp branch — now correctly calls .followUp()
+				messageOrInteraction.followUp(payload).catch(() => {});
 			}
 		} catch (error) {
 			logger.error(

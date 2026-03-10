@@ -92,11 +92,6 @@ export class MusicManager {
       });
     } catch (error) {
       logger.error("MusicManager", "Failed to initialize music system", error);
-      logger.error(
-        "MusicManager",
-        "❌ FATAL ERROR INITIALIZING MUSIC SYSTEM:",
-        error,
-      );
       this.initialized = false;
     }
   }
@@ -122,38 +117,16 @@ export class MusicManager {
     }
 
     try {
-      logger.debug(
-        "MusicManager",
-        `🔧 DEBUG: createPlayer called with options: ${JSON.stringify(options)}`,
-      );
-
       const { guildId, textId, voiceId } = this.parsePlayerOptions(options);
 
-      logger.debug(
-        "MusicManager",
-        `🔧 DEBUG: Parsed options: ${JSON.stringify({ guildId, textId, voiceId })}`,
-      );
-
       if (!guildId || !textId || !voiceId) {
-        logger.error("MusicManager", "Missing IDs for player creation", {
-          guildId,
-          textId,
-          voiceId,
-        });
-        logger.debug("MusicManager", "❌ DEBUG: Missing required IDs");
+        logger.error("MusicManager", "Missing IDs for player creation", { guildId, textId, voiceId });
         return null;
       }
 
       const existing = this.lavalink.getPlayer(guildId);
       if (existing) {
-        logger.debug(
-          "MusicManager",
-          `Player already exists for guild ${guildId}`,
-        );
-        logger.debug(
-          "MusicManager",
-          "🔧 DEBUG: Player already exists, returning existing",
-        );
+        logger.debug("MusicManager", `Player already exists for guild ${guildId}`);
         return existing;
       }
 
@@ -161,59 +134,21 @@ export class MusicManager {
       try {
         if (db) {
           playerVolume = db.guild.getDefaultVolume(guildId);
-          logger.debug(
-            "MusicManager",
-            `🔧 DEBUG: Got default volume from database: ${playerVolume}`,
-          );
-          logger.debug(
-            "MusicManager",
-            `Using default volume ${playerVolume} for guild ${guildId}`,
-          );
-        } else {
-          logger.debug(
-            "MusicManager",
-            "⚠️ DEBUG: Database or getDefaultVolume method not available, using fallback",
-          );
-          logger.warn(
-            "MusicManager",
-            "Database not available, using fallback volume 100",
-          );
         }
       } catch (error) {
-        logger.debug(
-          "MusicManager",
-          `❌ DEBUG: Error getting default volume: ${error.message}`,
-        );
-        logger.warn(
-          "MusicManager",
-          `Failed to get default volume for guild ${guildId}, using 100: ${error.message}`,
-        );
+        logger.warn("MusicManager", `Failed to get default volume for guild ${guildId}, using 100: ${error.message}`);
         playerVolume = 100;
       }
 
       if (isNaN(playerVolume) || playerVolume < 1 || playerVolume > 100) {
-        logger.debug(
-          "MusicManager",
-          `⚠️ DEBUG: Invalid volume, resetting to 100: ${playerVolume}`,
-        );
-        logger.warn(
-          "MusicManager",
-          `Invalid volume ${playerVolume}, using 100`,
-        );
+        logger.warn("MusicManager", `Invalid volume ${playerVolume}, using 100`);
         playerVolume = 100;
       }
 
-      logger.debug(
-        "MusicManager",
-        `🔧 DEBUG: Final volume to use: ${playerVolume}`,
-      );
-      logger.info(
-        "MusicManager",
-        `Creating player for guild ${guildId} with default volume ${playerVolume}`,
-      );
+      logger.info("MusicManager", `Creating player for guild ${guildId} with default volume ${playerVolume}`);
 
-      const playerConfig = {
-        guildId: guildId,
+      const player = await this.lavalink.createPlayer({
+        guildId,
         voiceChannelId: voiceId,
         textChannelId: textId,
         selfDeaf: true,
@@ -221,60 +156,21 @@ export class MusicManager {
         volume: playerVolume,
         instaUpdateFiltersFix: true,
         applyVolumeAsFilter: false,
-      };
-
-      logger.debug(
-        "MusicManager",
-        `🔧 DEBUG: Player config: ${JSON.stringify(playerConfig)}`,
-      );
-
-      const player = await this.lavalink.createPlayer(playerConfig);
+      });
 
       if (!player) {
-        logger.debug(
-          "MusicManager",
-          "❌ DEBUG: Lavalink createPlayer returned null/undefined",
-        );
-        logger.error(
-          "MusicManager",
-          `Failed to create player for guild ${guildId}`,
-        );
+        logger.error("MusicManager", `Failed to create player for guild ${guildId}`);
         return null;
       }
 
-      logger.debug(
-        "MusicManager",
-        "🔧 DEBUG: Player created successfully, attempting connection",
-      );
-
       if (!player.connected) {
-        logger.debug(
-          "MusicManager",
-          "🔧 DEBUG: Player not connected, connecting...",
-        );
         await player.connect();
-        logger.debug("MusicManager", "🔧 DEBUG: Player connected");
       }
 
-      logger.success(
-        "MusicManager",
-        `Player created and connected successfully for guild ${guildId} with default volume ${playerVolume}`,
-      );
-      logger.debug(
-        "MusicManager",
-        "✅ DEBUG: Player creation completed successfully",
-      );
+      logger.success("MusicManager", `Player created and connected for guild ${guildId} (vol: ${playerVolume})`);
       return player;
     } catch (error) {
-      logger.debug(
-        "MusicManager",
-        `❌ DEBUG: Error in createPlayer: ${error.message}`,
-      );
-      logger.error(
-        "MusicManager",
-        `Error creating player for guild ${options?.guildId || "unknown"}: ${error.message}`,
-      );
-      logger.error("MusicManager", `Full error stack: ${error.stack}`);
+      logger.error("MusicManager", `Error creating player: ${error.message}`);
       return null;
     }
   }
@@ -288,8 +184,14 @@ export class MusicManager {
     try {
       const { source = "spsearch", requester } = options;
 
-      const node = this.lavalink.nodeManager.leastUsedNodes("memory")[0];
+      // FIX: guard against no connected nodes before searching
+      const nodes = this.lavalink.nodeManager.leastUsedNodes("memory");
+      if (!nodes || nodes.length === 0) {
+        logger.warn("MusicManager", "No Lavalink nodes available for search");
+        return null;
+      }
 
+      const node = nodes[0];
       const searchResult = await node.search({ query, source }, requester);
 
       if (!searchResult || !searchResult.tracks?.length) {
@@ -306,10 +208,7 @@ export class MusicManager {
 
   getPlayer(guildId) {
     if (!this.initialized) {
-      logger.warn(
-        "MusicManager",
-        "Attempted to get player before initialization.",
-      );
+      logger.warn("MusicManager", "Attempted to get player before initialization.");
       return undefined;
     }
     return this.lavalink.getPlayer(guildId);
@@ -319,10 +218,7 @@ export class MusicManager {
     try {
       return db.guild.getDefaultVolume(guildId);
     } catch (error) {
-      logger.warn(
-        "MusicManager",
-        `Failed to get default volume for guild ${guildId}: ${error.message}`,
-      );
+      logger.warn("MusicManager", `Failed to get default volume for guild ${guildId}: ${error.message}`);
       return 100;
     }
   }
@@ -330,27 +226,25 @@ export class MusicManager {
   setDefaultVolume(guildId, volume) {
     try {
       db.guild.setDefaultVolume(guildId, volume);
-      logger.success(
-        "MusicManager",
-        `Default volume set to ${volume} for guild ${guildId}`,
-      );
+      logger.success("MusicManager", `Default volume set to ${volume} for guild ${guildId}`);
       return true;
     } catch (error) {
-      logger.error(
-        "MusicManager",
-        `Failed to set default volume for guild ${guildId}: ${error.message}`,
-      );
+      logger.error("MusicManager", `Failed to set default volume for guild ${guildId}: ${error.message}`);
       return false;
     }
   }
+
+  // FIX: was returning bare `return` (undefined) in both branches — now returns proper booleans
   async is247ModeEnabled(guildId) {
-    const settings = db.guild.get247Settings(guildId);
-    if (settings.enabled === true) {
-      return 
-    } else {
-      
+    try {
+      const settings = db.guild.get247Settings(guildId);
+      return settings.enabled === true;
+    } catch (error) {
+      logger.warn("MusicManager", `Failed to check 247 mode for guild ${guildId}: ${error.message}`);
+      return false;
     }
   }
+
   parsePlayerOptions(options) {
     if (options.guildId && options.textChannelId && options.voiceChannelId) {
       return {
@@ -368,11 +262,7 @@ export class MusicManager {
       };
     }
 
-    logger.error(
-      "MusicManager",
-      "Invalid options for player creation",
-      options,
-    );
+    logger.error("MusicManager", "Invalid options for player creation", options);
     return {};
   }
 }

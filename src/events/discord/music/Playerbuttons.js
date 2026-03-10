@@ -112,7 +112,7 @@ async function handleButtonInteraction(interaction, pm) {
 			break;
 
 		case 'music_stop':
-			await pm.stop(true, false);
+			await pm.stop();
 			response = '⏹️ Music stopped and queue cleared.';
 			break;
 

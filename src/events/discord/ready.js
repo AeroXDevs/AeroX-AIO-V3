@@ -2,6 +2,7 @@ import { ActivityType, ContainerBuilder, TextDisplayBuilder, SectionBuilder, Sep
 import { logger } from "#utils/logger";
 import { config } from "#config/config";
 import { db } from "#database/DatabaseManager";
+import { antiAbuse } from "#utils/AntiAbuse";
 import fs from "fs";
 import path from "path";
 import { AttachmentBuilder } from "discord.js";
@@ -45,6 +46,16 @@ export default {
 
     logger.info("Bot", "Starting reminder scheduler (every 30 seconds)");
     setInterval(() => checkReminders(client), 30000);
+
+    logger.info("Bot", "Starting anti-abuse data cleanup (every 24 hours)");
+    setInterval(async () => {
+      try {
+        antiAbuse.cleanupOldData();
+        logger.debug("Bot", "Anti-abuse data cleanup completed");
+      } catch (e) {
+        logger.error("Bot", "Anti-abuse cleanup failed:", e);
+      }
+    }, 24 * 60 * 60 * 1000);
     checkReminders(client);
 
     logger.info("Bot", "Initializing invite cache for all guilds...");

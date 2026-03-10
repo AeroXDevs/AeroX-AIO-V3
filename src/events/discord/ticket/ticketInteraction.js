@@ -247,6 +247,19 @@ async function handleTicketClaim(interaction, client, channelId) {
   return interaction.reply({ embeds: [embed] });
 }
 
+
+// FIX: HTML escape helper to prevent XSS when rendering message content in transcripts
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/\n/g, '<br>');
+}
+
 async function generateHTMLTranscript(channel, ticketData, panel, client) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sortedMessages = messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);

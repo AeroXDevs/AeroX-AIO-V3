@@ -5,18 +5,15 @@ import { logger } from "#utils/logger";
 import { QueueManager } from "./QueueManager.js";
 
 export class PlayerManager {
-  player;
-
-  queue;
-
-  guildId;
+  // FIX: Removed the `guildId` class field declaration here.
+  // Having both a field and a getter caused the getter to be shadowed — the field
+  // was always undefined. Now only the getter at the bottom is used.
 
   constructor(player) {
     if (!player) {
       throw new Error("PlayerManager requires a valid player instance.");
     }
     this.player = player;
-    this.guildId = player.guildId;
     this.queue = new QueueManager(player);
   }
 
@@ -50,15 +47,12 @@ export class PlayerManager {
   }
 
   async playPrevious() {
-    const previousTrack = await this.player.queue.shiftPrevious()
+    const previousTrack = await this.player.queue.shiftPrevious();
     if (!previousTrack) {
-      logger?.warn(
-        `[PlayerManager] No previous track to play for guild ${this.guildId}.`,
-      );
+      logger?.warn(`[PlayerManager] No previous track to play for guild ${this.guildId}.`);
       return false;
     }
 
-    
     await this.player.play({ clientTrack: previousTrack });
     await this.player.queue.utils.save();
     return true;
@@ -75,21 +69,20 @@ export class PlayerManager {
   }
 
   async stop() {
-    const { guildId } = this.player;
-    const is247ModeEnabled = await this.is247ModeEnabled(guildId);
+    const { guildId } = this;
+    const is247ModeEnabled = await this.is247ModeEnabled();
 
     if (!is247ModeEnabled) {
-      this.player.destroy("Stop command", true);
+      await this.player.destroy("Stop command", true);
       return;
     }
-    const autoplayEnabled = this.player.get("autoplayEnabled") || false;
 
+    const autoplayEnabled = this.player.get("autoplayEnabled") || false;
     if (autoplayEnabled) {
       this.player.set("autoplayEnabled", false);
-     
     }
-  // await  this.player.queue.tracks.splice(0, this.player.queue.tracks.length);
-    await this.player.stopPlaying()
+
+    await this.player.stopPlaying();
     return this;
   }
 
@@ -120,15 +113,14 @@ export class PlayerManager {
     return this;
   }
 
+  // FIX: was returning bare `return` (undefined) in else branch — now always returns a boolean
   async is247ModeEnabled() {
-    const settings = db.guild.get247Settings(this.guildId);
-    
-    if (settings.enabled === true) {
-      
-      return true
-    
-    } else {
-      return 
+    try {
+      const settings = db.guild.get247Settings(this.guildId);
+      return settings.enabled === true;
+    } catch (error) {
+      logger?.warn(`[PlayerManager] Failed to check 247 mode for guild ${this.guildId}: ${error.message}`);
+      return false;
     }
   }
 
@@ -185,12 +177,8 @@ export class PlayerManager {
   get previousTracks() {
     return this.player.queue.previous;
   }
-  get isEmpty(){
-    if(this.queueSize === 0 && !this.currentTrack){
-      return true;
-    }else{
-      return false;
-    }
+  get isEmpty() {
+    return this.queueSize === 0 && !this.currentTrack;
   }
 
   async addTracks(tracks, position) {
@@ -213,7 +201,7 @@ export class PlayerManager {
   }
 
   async clearQueue() {
-   return await this.player.queue.tracks.splice(0, this.player.queue.tracks.length);
+    return await this.player.queue.tracks.splice(0, this.player.queue.tracks.length);
   }
 
   async forward(amount = 10000) {
@@ -316,9 +304,7 @@ export class PlayerManager {
           : config.queue?.maxSongs?.free || 25,
       };
     } catch (error) {
-      logger?.warn(
-        `[PlayerManager] Failed to get premium status: ${error.message}`,
-      );
+      logger?.warn(`[PlayerManager] Failed to get premium status: ${error.message}`);
       return {
         hasPremium: false,
         type: "free",
@@ -334,6 +320,7 @@ export class PlayerManager {
       : false;
   }
 
+  // FIX: Only the getter remains — field declaration above was removed to avoid conflict
   get guildId() {
     return this.player.guildId;
   }
@@ -461,9 +448,7 @@ export class PlayerManager {
 
       return null;
     } catch (error) {
-      logger.error(
-        `[PlayerManager] Error parsing time string: ${error.message}`,
-      );
+      logger.error(`[PlayerManager] Error parsing time string: ${error.message}`);
       return null;
     }
   }

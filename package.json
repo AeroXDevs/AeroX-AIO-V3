@@ -8,7 +8,7 @@
     "start": "node src/shard.js",
     "dev": "node --watch src/shard.js",
     "test": "node --test",
-    "setup": "cp .env.example .env && echo 'Created .env file. Please edit it with yaour configuration.'"
+    "setup": "cp .env.example .env && echo 'Created .env file. Please edit it with your configuration.'"
   },
   "imports": {
     "#commands/*": "./src/commands/*.js",

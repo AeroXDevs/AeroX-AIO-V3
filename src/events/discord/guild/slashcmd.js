@@ -27,7 +27,7 @@ import {
 async function _sendError(interaction, title, description) {
   const button = new ButtonBuilder()
     .setLabel("Support")
-    .setURL("https://discord.gg/aerox")
+    .setURL(config.links.supportServer)
     .setStyle(ButtonStyle.Link);
 
   const container = new ContainerBuilder()
@@ -65,7 +65,7 @@ async function _sendError(interaction, title, description) {
 async function _sendPremiumError(interaction, type) {
   const button = new ButtonBuilder()
     .setLabel("Support")
-    .setURL("https://discord.gg/aerox")
+    .setURL(config.links.supportServer)
     .setStyle(ButtonStyle.Link);
 
   const container = new ContainerBuilder()
@@ -115,7 +115,7 @@ async function _sendCooldownError(interaction, cooldownTime, command) {
 
   const button = new ButtonBuilder()
     .setLabel("Support")
-    .setURL("https://discord.gg/aerox")
+    .setURL(config.links.supportServer)
     .setStyle(ButtonStyle.Link);
 
   const hasPremium = db.hasAnyPremium(interaction.user.id, interaction.guild.id);
@@ -162,7 +162,7 @@ async function handleChatInputCommand(interaction, client) {
   if (!interaction.inGuild()) {
     const button = new ButtonBuilder()
       .setLabel("Support")
-      .setURL("https://discord.gg/aerox")
+      .setURL(config.links.supportServer)
       .setStyle(ButtonStyle.Link);
 
     const container = new ContainerBuilder()
@@ -201,7 +201,7 @@ async function handleChatInputCommand(interaction, client) {
 
     const button = new ButtonBuilder()
       .setLabel("Support")
-      .setURL("https://discord.gg/aerox")
+      .setURL(config.links.supportServer)
       .setStyle(ButtonStyle.Link);
 
     const container = new ContainerBuilder()

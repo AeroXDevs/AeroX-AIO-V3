@@ -8,6 +8,9 @@ export default {
 
     const guildId = member.guild.id;
 
+    // FIX: Guard — only track invites if tracking is enabled for this guild
+    if (!db.isInviteTrackingEnabled(guildId)) return;
+
     try {
       const oldInvites = client.inviteCache?.get(guildId) || new Map();
       const newInvites = await member.guild.invites.fetch({ cache: false });
@@ -34,6 +37,7 @@ export default {
         }
       }
 
+      // Update invite cache for this guild
       const cacheMap = new Map();
       for (const [code, invite] of newInvites) {
         cacheMap.set(code, { uses: invite.uses, inviterId: invite.inviter?.id });

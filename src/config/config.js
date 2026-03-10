@@ -1,43 +1,59 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// FIX: Lavalink defaults were hardcoded public credentials (host + password).
+// Now they require explicit env vars — bot will fail clearly if not configured.
+const lavalinkHost = process.env.LAVALINK_HOST;
+const lavalinkPassword = process.env.LAVALINK_PASSWORD;
+
+if (!lavalinkHost || !lavalinkPassword) {
+  console.warn(
+    '[Config] WARNING: LAVALINK_HOST or LAVALINK_PASSWORD is not set. ' +
+    'Music features will not work until these are configured in your .env file.'
+  );
+}
+
 export const config = {
   // Bot authentication token from Discord Developer Portal
   token: process.env.DISCORD_TOKEN,
-  
+
   // Discord application client ID (found in Developer Portal)
   clientId: process.env.CLIENT_ID,
-  
+
   // Command prefix for text-based commands (default: '.')
   prefix: process.env.PREFIX || '.',
-  
+
   // Array of Discord user IDs with owner privileges
-  // Multiple IDs should be comma-separated in .env file
   ownerIds: (process.env.OWNER_IDS || '').split(',').map(id => id.trim()).filter(Boolean),
-  
-  // Lavalink node configuration for music streaming
-  // Supports multiple nodes for load balancing and redundancy
-  // Default: TriniumHost v4 node (fallback if env vars not set)
+
+  // FIX: Shard count now configurable via TOTAL_SHARDS env var (was hardcoded to 4)
+  sharding: {
+    totalShards: process.env.TOTAL_SHARDS === 'auto' || !process.env.TOTAL_SHARDS
+      ? 'auto'
+      : parseInt(process.env.TOTAL_SHARDS, 10),
+    shardsPerCluster: parseInt(process.env.SHARDS_PER_CLUSTER, 10) || 2,
+  },
+
+  // Lavalink node configuration — no hardcoded fallbacks (see warning above)
   nodes: [
     {
       id: process.env.LAVALINK_ID || "main-node",
-      host: process.env.LAVALINK_HOST || "140.238.179.182",
-      port: parseInt(process.env.LAVALINK_PORT) || 2333,
-      authorization: process.env.LAVALINK_PASSWORD || "kirito",
+      host: lavalinkHost || "localhost",
+      port: parseInt(process.env.LAVALINK_PORT, 10) || 2333,
+      authorization: lavalinkPassword || "youshallnotpass",
       secure: process.env.LAVALINK_SECURE === 'true',
       retryAmount: Infinity,
       retryDelay: 10000,
     },
   ],
-  
-  // Application environment (development/production)
+
+  // Application environment
   environment: process.env.NODE_ENV || 'development',
-  
-  // Enable debug logging (auto-enabled in development mode)
+
+  // Enable debug logging
   debug: process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development',
-  
-  // Database file paths for different data types
-  // Using .bread extension for Better-SQLite3 databases
+
+  // Database file paths (.bread = better-sqlite3 databases)
   database: {
     guild: './database/data/guild.bread',
     user: './database/data/user.bread',
@@ -47,121 +63,104 @@ export const config = {
     ticket: './database/data/ticket.bread',
     invites: './database/data/invites.bread',
   },
-  
-  // External links and resources
+
+  // External links
   links: {
     supportServer: process.env.SUPPORT_SERVER_URL || "https://discord.gg/aerox"
   },
-  
+
   // Bot presence/status configuration
   status: {
     name: process.env.STATUS_TEXT || '!help | Discord Bot',
-    status: process.env.STATUS_TYPE || 'dnd', // online, idle, dnd, invisible
-    type: 'CUSTOM' // Activity type
+    status: process.env.STATUS_TYPE || 'dnd',
+    type: 'CUSTOM'
   },
-  
-  // Embed color scheme (hex values)
+
+  // Embed color scheme
   colors: {
-    info: '#3498db',     // Blue - informational messages
-    success: '#2ecc71',  // Green - success messages
-    warning: '#f39c12',  // Orange - warning messages
-    error: '#e74c3c'     // Red - error messages
+    info: '#3498db',
+    success: '#2ecc71',
+    warning: '#f39c12',
+    error: '#e74c3c'
   },
-  
-  // Discord webhook configuration for logging bot events
+
+  // Discord webhook logging configuration
   webhook: {
     enabled: process.env.WEBHOOK_ENABLED !== 'false',
     url: process.env.WEBHOOK_URL || null,
     username: process.env.WEBHOOK_USERNAME || 'Bot Logger',
     avatarUrl: process.env.WEBHOOK_AVATAR_URL || null,
-    // Configure which log levels should be sent to webhook
     levels: {
-      info: {
-        enabled: process.env.WEBHOOK_INFO_ENABLED !== 'false'
-      },
-      success: {
-        enabled: process.env.WEBHOOK_SUCCESS_ENABLED !== 'false'
-      },
-      warning: {
-        enabled: process.env.WEBHOOK_WARNING_ENABLED !== 'false'
-      },
-      error: {
-        enabled: process.env.WEBHOOK_ERROR_ENABLED !== 'false'
-      },
-      debug: {
-        enabled: process.env.WEBHOOK_DEBUG_ENABLED === 'true'
-      }
+      info:    { enabled: process.env.WEBHOOK_INFO_ENABLED !== 'false' },
+      success: { enabled: process.env.WEBHOOK_SUCCESS_ENABLED !== 'false' },
+      warning: { enabled: process.env.WEBHOOK_WARNING_ENABLED !== 'false' },
+      error:   { enabled: process.env.WEBHOOK_ERROR_ENABLED !== 'false' },
+      debug:   { enabled: process.env.WEBHOOK_DEBUG_ENABLED === 'true' },
     }
   },
-  
+
   // Bot feature toggles
   features: {
-    stay247: true // Keep bot in voice channel 24/7 when enabled
+    stay247: true
   },
-  
-  // Queue limitations based on user tier
+
+  // Queue limitations per tier
   queue: {
     maxSongs: {
-      free: 50,      // Maximum songs for free users
-      premium: 200   // Maximum songs for premium users
+      free: 50,
+      premium: 200
     }
   },
-  
-  // Default image assets for embeds
+
+  // Default image assets
   assets: {
     defaultTrackArtwork: process.env.DEFAULT_TRACK_ARTWORK || null,
     defaultThumbnail: process.env.DEFAULT_THUMBNAIL || null,
     helpThumbnail: process.env.HELP_THUMBNAIL || null,
     bannerUrl: process.env.BANNER_URL || null,
   },
-  
-  // Helper function to safely get thumbnail URL (returns null if not set)
+
   getThumbnailUrl(url) {
     return url || null;
   },
-  
-  // Spotify API credentials for track searching
-  // Get these from https://developer.spotify.com/dashboard
+
+  // Spotify API credentials
   spotify: {
     clientId: process.env.SPOTIFY_CLIENT_ID,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET
   },
-  
-  // Last.fm API configuration for music metadata
-  // Get API key from https://www.last.fm/api
+
+  // Last.fm API
   lastfm: {
     apiKey: process.env.LASTFM_API_KEY
   },
-  
+
   // Music search configuration
   search: {
-    maxResults: 6, // Maximum search results to display
-    // Default sources to search from (YouTube, Spotify, Apple Music, SoundCloud)
+    maxResults: 6,
     defaultSources: ['ytsearch']
   },
-  
-  // Music player default settings
+
+  // Music player defaults
   player: {
-    defaultVolume: 100,        // Default volume level (0-100)
-    seekStep: 10000,           // Seek forward/backward step in milliseconds (10s)
-    maxHistorySize: 50,        // Maximum number of previously played tracks to keep
-    // 24/7 mode configuration
+    defaultVolume: 100,
+    seekStep: 10000,
+    maxHistorySize: 50,
     stay247: {
-      reconnectDelay: 5000,         // Delay before reconnection attempt (ms)
-      maxReconnectAttempts: 3,      // Maximum reconnection attempts
-      checkInterval: 30000          // Interval to check connection status (ms)
+      reconnectDelay: 5000,
+      maxReconnectAttempts: 3,
+      checkInterval: 30000
     },
-    // Audio quality settings - Maximum quality
     audioQuality: {
-      bitrate: 320,              // Maximum bitrate in kbps (320 = highest quality)
-      sampleRate: 48000,         // Sample rate in Hz (48000 = CD quality)
-      channels: 2,               // Stereo audio
-      bufferSize: 8192,          // Larger buffer for smoother playback
-      highWaterMark: 1048576,    // 1MB buffer for stability
+      bitrate: 320,
+      sampleRate: 48000,
+      channels: 2,
+      bufferSize: 8192,
+      highWaterMark: 1048576,
     }
   },
-  
-  // Bot metadata
+
   watermark: 'coded by Shinchan',
-  version: '2.0.0'
+  // FIX: version aligned with package name (V3)
+  version: '3.0.0'
 };

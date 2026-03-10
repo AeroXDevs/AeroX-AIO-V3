@@ -1,6 +1,11 @@
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from '#utils/logger';
+
+// FIX: Use import.meta.url for reliable path resolution instead of fragile process.cwd()/../..
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default class MusicCard {
         constructor() {
